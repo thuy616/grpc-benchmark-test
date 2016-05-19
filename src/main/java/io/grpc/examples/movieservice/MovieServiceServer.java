@@ -5,10 +5,16 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collection;
+import java.util.logging.FileHandler;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 /**
  * Created by thuy on 18/05/16.
@@ -19,9 +25,28 @@ public class MovieServiceServer {
 
     private final int port;
     private final Server server;
+    private FileHandler fh = null;
 
     public MovieServiceServer(int port) throws IOException {
         this(port, MovieServiceUtil.getDefaultMoviesFile());
+
+        SimpleDateFormat format = new SimpleDateFormat("MM_dd_yyyy_HHmmss");
+        try {
+            String dir = Paths.get("").toAbsolutePath().toString() + "//Logging";
+            File directory = new File(dir);
+
+            if (!directory.exists()) {
+                directory.mkdir();
+            }
+
+            fh = new FileHandler(dir + "//Server_Log_"
+                    + format.format(Calendar.getInstance().getTime()) + ".log");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        fh.setFormatter(new SimpleFormatter());
+        logger.addHandler(fh);
     }
 
     /** Create a Movie server listening on {@code port} using {@code moviesFile} database. */
@@ -92,9 +117,11 @@ public class MovieServiceServer {
 
         @Override
         public void listAllMovies(Empty request, StreamObserver<MoviesInTheaterResponse> responseObserver) {
-            MoviesInTheaterResponse res = MoviesInTheaterResponse.newBuilder().build();
-            res.getMoviesList().addAll(movies);
-            responseObserver.onNext(res);
+            MoviesInTheaterResponse.Builder res = MoviesInTheaterResponse.newBuilder();
+            for (Movie movie: movies) {
+                res.addMovies(movie);
+            }
+            responseObserver.onNext(res.build());
             responseObserver.onCompleted();
         }
 
@@ -104,7 +131,6 @@ public class MovieServiceServer {
                 responseObserver.onNext(movie);
             }
             responseObserver.onCompleted();
-
         }
 
         @Override
