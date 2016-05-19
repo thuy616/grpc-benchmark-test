@@ -1,0 +1,72 @@
+{
+  "adult": false,
+  "backdrop_path": "/m5O3SZvQ6EgD5XXXLPIP1wLppeW.jpg",
+  "belongs_to_collection": {
+    "id": 131295,
+    "name": "Captain America Collection",
+    "poster_path": "/2tOgiY533JSFp7OrVlkeRJvsZpI.jpg",
+    "backdrop_path": "/nZSYqitBkAvmoq5IrsGsSWuhSC8.jpg"
+  },
+  "budget": 250000000,
+  "genres": [
+    {
+      "id": 28,
+      "name": "Action"
+    },
+    {
+      "id": 53,
+      "name": "Thriller"
+    },
+    {
+      "id": 878,
+      "name": "Science Fiction"
+    }
+  ],
+  "homepage": "http://marvel.com/captainamericapremiere",
+  "id": 271110,
+  "imdb_id": "tt3498820",
+  "original_language": "en",
+  "original_title": "Captain America: Civil War",
+  "overview": "Following the events of Age of Ultron, the collective governments of the world pass an act designed to regulate all superhuman activity. This polarizes opinion amongst the Avengers, causing two factions to side with Iron Man or Captain America, which causes an epic battle between former allies.",
+  "popularity": 68.890327,
+  "poster_path": "/rDT86hJCxnoOs4ARjrCiRej7pOi.jpg",
+  "production_companies": [
+    {
+      "name": "Marvel Studios",
+      "id": 420
+    }
+  ],
+  "production_countries": [
+    {
+      "iso_3166_1": "US",
+      "name": "United States of America"
+    }
+  ],
+  "release_date": "2016-04-27",
+  "revenue": 206000000,
+  "runtime": 146,
+  "spoken_languages": [
+    {
+      "iso_639_1": "ro",
+      "name": "Română"
+    },
+    {
+      "iso_639_1": "en",
+      "name": "English"
+    },
+    {
+      "iso_639_1": "de",
+      "name": "Deutsch"
+    },
+    {
+      "iso_639_1": "ru",
+      "name": "Pусский"
+    }
+  ],
+  "status": "Released",
+  "tagline": "Divided We Fall",
+  "title": "Captain America: Civil War",
+  "video": false,
+  "vote_average": 6.9,
+  "vote_count": 1380
+}

@@ -1,0 +1,111 @@
+apply plugin: 'application' // generating java files from *.proto files
+apply plugin: 'java' // compile to jar files
+apply plugin: 'com.google.protobuf'
+apply plugin: 'idea'
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.7.6'
+    }
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile 'io.grpc:grpc-all:0.14.0'
+}
+
+mainClassName = "io.grpc.examples.movieservice"
+
+protobuf {
+
+    generatedFilesBaseDir = "$projectDir/src/generated"
+
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.0.0-beta-2"
+    }
+    plugins {
+        grpc {
+            artifact = 'io.grpc:protoc-gen-grpc-java:0.14.0'
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {}
+        }
+
+        ofSourceSet('main')
+    }
+
+}
+
+task agentJar(type: Jar) {
+    classifier = "agent"
+    destinationDir = new File(project.buildDir, 'libs')
+    from (sourceSets.main.output) {
+        include 'src/main/java/agent/**'
+    }
+}
+
+task copyJarToBin(type: Copy) {
+    from "build/libs/io.grpc.examples-agent.jar"
+    into "build/tmp"
+}
+
+//
+//task clientJar(type: Jar) {
+//    dependsOn compileJava
+//    classifier = "client"
+//    archiveName = "client"
+//    destinationDir = new File(project.buildDir, 'tmp')
+//    from (sourceSets.main.output) {
+//        exclude 'src/main/java/agent/**'
+//    }
+//    manifest {
+//        attributes("Premain-Class": "ObjectSizeAgent")
+//    }
+//}
+
+task movieServiceServer(type: CreateStartScripts) {
+    mainClassName = "io.grpc.examples.movieservice.MovieServiceServer"
+    applicationName = "movie-service-server"
+    outputDir = new File(project.buildDir, 'tmp')
+    classpath = jar.outputs.files + project.configurations.runtime
+}
+
+task movieServiceClient(type: CreateStartScripts) {
+    mainClassName = "io.grpc.examples.movieservice.MovieServiceClient"
+    applicationName = "movie-service-client"
+    outputDir = new File(project.buildDir, 'tmp')
+    classpath = jar.outputs.files + project.configurations.runtime
+//    defaultJvmOpts = ['-javaagent:io.grpc.examples-agent.jar']
+}
+
+artifacts {
+    archives agentJar
+}
+
+applicationDistribution.into("bin") {
+    from(movieServiceServer)
+    from(movieServiceClient)
+    from(agentJar)
+    fileMode = 0755
+}
+
+idea {
+    module {
+        sourceDirs += file("${projectDir}/build/generated/source/proto/main/grpc");
+        sourceDirs += file("${projectDir}/build/generated/source/proto/main/java");
+        // Let intellij projects refer to generated code
+//        sourceDirs += file("${projectDir}/src/generated/main/java");
+//        sourceDirs += file("${projectDir}/src/generated/main/grpc");
+        // ask IntelliJ to include the generated Java directories as source folders.
+        sourceDirs += file("${protobuf.generatedFilesBaseDir}/main/java");
+        sourceDirs += file("${protobuf.generatedFilesBaseDir}/main/grpc");
+    }
+}

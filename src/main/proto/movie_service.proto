@@ -1,0 +1,116 @@
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+
+option java_multiple_files = true;
+option java_package = "io.grpc.examples.movieservice";
+option java_outer_classname = "MovieServiceProto";
+option objc_class_prefix = "MS";
+
+package movieservice;
+
+// The greeting service definition.
+service MovieService {
+    // Simple Unary RPC
+    // Get details for a movie
+    rpc GetMovieDetails (MovieRequest) returns (Movie) {}
+
+    // Simple Unary RPC
+    // Get a list of movies
+    // big result
+    rpc ListAllMovies(google.protobuf.Empty) returns (MoviesInTheaterResponse) {}
+
+    rpc ListAllMoviesServerStreaming(google.protobuf.Empty) returns (stream Movie) {}
+
+    // A server-to-client Streaming RPC
+    // accepts a request
+    // Obtains the list of movies
+    // Results are streamed rather than returned at once
+    rpc ListMoviesServerToClientStreaming(MoviesInTheaterRequest) returns (stream Movie) {}
+
+    // A client-to-server Streaming RPC
+    // returns all results at once when the requests are all received
+    rpc ListMoviesClientToServerStreaming(stream MovieRequest) returns (MoviesInTheaterResponse) {}
+
+    rpc ListMoviesBidirectionalStreaming(stream MovieRequest) returns (stream Movie) {}
+
+}
+
+message MoviesInTheaterRequest {
+    repeated uint64 ids = 1;
+}
+
+message MoviesInTheaterResponse {
+    repeated Movie movies = 1;
+}
+
+// The request message containing the user's name.
+message MovieRequest {
+    uint64 id = 1;
+}
+
+message MovieDatabase {
+    repeated Movie movies = 1;
+}
+
+message Movie {
+    bool adult = 1;
+    string backdrop_path = 2;
+
+    message Collection {
+        uint64 id =1;
+        string name = 2;
+        string poster_path = 3;
+        string backdrop_path = 4;
+    }
+
+    Collection belongs_to_collection = 3;
+
+    uint64 budget = 4;
+
+    message Genre {
+        int32 id = 1;
+        string name = 2;
+    }
+
+    repeated Genre genres = 5;
+    string homepage = 6;
+    uint64 id = 7;
+    string imdb_id = 8;
+    string original_language = 9;
+    string original_title = 10;
+    string overview = 11;
+    double popularity = 12;
+    string poster_path = 13;
+
+    message ProductionCompany {
+        string name = 1;
+        int32 id = 2;
+    }
+
+    repeated ProductionCompany production_companies = 14;
+
+    message ProductionCountry {
+        string iso_3166_1 = 1;
+        string name = 2;
+    }
+
+    repeated ProductionCountry production_countries = 15;
+
+    string release_date = 16;
+    uint64 revenue = 17;
+    int32 runtime = 18;
+
+    message SpokenLanguage {
+        string iso_639_1 = 1;
+        string name = 2;
+    }
+
+    repeated SpokenLanguage spoken_languages = 19;
+    string status = 20;
+    string tagline = 21;
+    string title = 22;
+    bool video = 23;
+    double vote_average = 24;
+    int32 vote_count = 25;
+
+}
