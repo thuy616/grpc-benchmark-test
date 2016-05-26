@@ -1,27 +1,28 @@
 package io.grpc.examples.movieservice;
 
-import com.google.common.primitives.Longs;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.Empty;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.grpc.stub.StreamObserver;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Calendar;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Scanner;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
-
-import io.grpc.stub.StreamObserver;
 
 
 /**
@@ -35,6 +36,12 @@ public class MovieServiceClient {
     private final MovieServiceGrpc.MovieServiceStub asyncStub;
     private final MovieServiceGrpc.MovieServiceFutureStub syncNonBlockingStub;
     private final MovieServiceGrpc.MovieServiceBlockingStub blockingStub;
+
+    public static long start;
+    public static long end;
+
+    public static int count;
+    public int counter;
 
     public MovieServiceClient(String host, int port) {
         this(ManagedChannelBuilder.forAddress(host, port).usePlaintext(true));
@@ -55,6 +62,7 @@ public class MovieServiceClient {
         }
 
         fh.setFormatter(new SimpleFormatter());
+        fh.setLevel(Level.INFO);
         logger.addHandler(fh);
     }
 
@@ -79,7 +87,7 @@ public class MovieServiceClient {
             movie = blockingStub.getMovieDetails(request);
             return movie;
         } catch (StatusRuntimeException e) {
-            logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
+            info(String.format("RPC failed: {0} - {1}", e.getMessage(), e.getStackTrace()));
             return null;
         }
     }
@@ -88,51 +96,45 @@ public class MovieServiceClient {
         MoviesInTheaterResponse res = null;
         try {
             long start = System.nanoTime();
-            for (int i=0; i<count; i++) {
+            for (int i = 0; i < count; i++) {
                 res = blockingStub.listAllMovies(request);
             }
             long end = System.nanoTime();
-            logTransmissionTime(end-start);
+            logTransmissionTime(end - start);
         } catch (StatusRuntimeException e) {
-            logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
+            info("RPC failed: {0} - {1}", e.getMessage(), e.getStackTrace());
             return null;
         }
-        info("Response Serialized Size: {0}", res.getSerializedSize());
 
         return res;
     }
 
     private void getAllMoviesServerStreamingBlockingStub(Empty request, int count) {
-//        long[] ids = new long[] {
-//                271110, 246655, 293660, 209112, 153518, 303858, 332411, 325133, 383121, 290250,
-//                398051, 254302, 301608, 360365, 241259, 68735, 291805, 308531, 244786, 278,
-//                238, 157336, 140420, 77338, 264644, 240, 12477, 637, 293299, 550, 424, 155,
-//                118340, 680
-//        };
+
         MoviesInTheaterResponse.Builder builder = MoviesInTheaterResponse.newBuilder();
         Iterator<Movie> movies = null;
-        try {
-            long start = System.nanoTime();
-            for (int i=0; i<count; i++) {
+        long start = System.nanoTime();
+        for (int i = 0; i < count; i++) {
+            try {
                 movies = blockingStub.listAllMoviesServerStreaming(request);
+
+            } catch (StatusRuntimeException e) {
+                info(String.format("RPC failed: {0} - {1}", e.getMessage(), e.getStackTrace()));
+                return;
             }
-            long end = System.nanoTime();
-            logTransmissionTime(end-start);
-            while(movies.hasNext()) {
-                builder.addMovies(movies.next());
+            StringBuilder responseLog = new StringBuilder("Result: ");
+            while (movies.hasNext()) {
+                Movie m = movies.next();
+                responseLog.append(m); // consume response
             }
-        } catch (StatusRuntimeException e) {
-            logger.log(Level.SEVERE, "RPC failed: {0}", e.getStatus());
-            return;
         }
-        info("Response Deserialized Size: {0}", builder.build().getSerializedSize());
+        long end = System.nanoTime();
+        logTransmissionTime(end - start);
 
     }
 
-    private long allMoviesServerStreamingAsyncStub(Empty request, AtomicReference<MoviesInTheaterResponse.Builder> builder) {
-        final long[] startTime = {0};
-        final long[] endTime = {0};
-        final long[] transmissionTime = {0};
+    private void allMoviesServerStreamingAsyncStub(Empty request, AtomicReference<MoviesInTheaterResponse.Builder> builder) {
+
         MoviesInTheaterResponse.Builder res = builder.get();
         final CountDownLatch finishLatch = new CountDownLatch(1);
         StreamObserver<Movie> responseObserver = new StreamObserver<Movie>() {
@@ -145,35 +147,36 @@ public class MovieServiceClient {
             @Override
             public void onError(Throwable t) {
                 Status status = Status.fromThrowable(t);
-                logger.log(Level.WARNING, "getAllMoviesServerStreamingAsyncStub Failed: {0}", status);
+                info(String.format("getAllMoviesServerStreamingAsyncStub Failed: {0}", status));
                 finishLatch.countDown();
             }
 
             @Override
             public void onCompleted() {
 //                info("Finsihed getAllMoviesServerStreamingAsyncStub ResponseObserver completed");
-                endTime[0] = System.nanoTime();
-                transmissionTime[0] = endTime[0] - startTime[0];
-//                info("Transmission time: {0}", transmissionTime);
                 finishLatch.countDown();
+                counter = counter + 1;
+//                info("processed {0}", counter);
+                if (counter == count) {
+                    end = System.nanoTime();
+                    info("FINISH SET --- ");
+                    logTransmissionTime(end - start);
+                    // reset
+                    counter = 0;
+                    count = 0;
+                }
             }
         };
 //        info("MoviesInTheaterRequest sent");
-        startTime[0] = System.nanoTime();
+
         asyncStub.listAllMoviesServerStreaming(request, responseObserver);
-        while(finishLatch.getCount()!=0) {
+        while (finishLatch.getCount() != 0) {
             try {
                 finishLatch.await(10, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                logger.severe(e.getMessage() + " - " + e.getStackTrace());
             }
         }
-
-        if (finishLatch.getCount() == 0) {
-//            info("finishLatch count == 0");
-            return transmissionTime[0];
-        }
-        return transmissionTime[0];
     }
 
 
@@ -181,15 +184,21 @@ public class MovieServiceClient {
      * SCENARIO 3
      * ServerStreaming Async Client
      */
-    public void benchmarkServerStreamingBlocking(int count) {
+    public void benchmarkServerStreamingAsync(int count) {
         Empty request = Empty.getDefaultInstance();
         AtomicReference<MoviesInTheaterResponse.Builder> builder = new AtomicReference<MoviesInTheaterResponse.Builder>(MoviesInTheaterResponse.newBuilder());
-        long totalTransmissionTime = 0;
-        for (int i=0; i<count; i++) {
+//        long totalTransmissionTime = 0;
+        start = System.nanoTime();
+        this.count = count;
+        for (int i = 0; i < count; i++) {
+//            info("Request #{0} sent...", i);
             builder.get().clearMovies();
-            totalTransmissionTime += this.allMoviesServerStreamingAsyncStub(request, builder);
+            this.allMoviesServerStreamingAsyncStub(request, builder);
         }
-        logTransmissionTime(totalTransmissionTime);
+        while (this.count != 0) {
+            // block main thread to wait for all requests to be processed
+        }
+
         info("Reponse serialized size: {0}", builder.get().build().getSerializedSize());
 
     }
@@ -198,82 +207,51 @@ public class MovieServiceClient {
     /**
      * RUN ALL TESTS
      */
-    private void runAllTests() {
+    private void runTests(int mode, int calls, int iterations) {
 
-        info("===========     START     =============");
+        info("===========     START : {0} CALLS   =============", calls);
 
-        info("");
-        info("### TEST 1 ### UNARY ### BLOCKING ### 1 CALL");
-        getAllMoviesUnaryBlockingStub(Empty.getDefaultInstance(), 1);
+        for (int i = 0; i < iterations; i++) {
+            switch (mode) {
+                case 1:
+                    info("### TEST SCENARIO 1 ### UNARY ### BLOCKING ###");
+                    getAllMoviesUnaryBlockingStub(Empty.getDefaultInstance(), calls);
+                    break;
+                case 2:
+                    info("### TEST SCENARIO 2 ### SERVER STREAMING ### BLOCKING ###");
+                    getAllMoviesServerStreamingBlockingStub(Empty.getDefaultInstance(), calls);
+                    break;
+                case 3:
+                    info("### TEST SCENARIO 3 ### SERVER STREAMING ### ASYNC ### 1 CALL");
+                    benchmarkServerStreamingAsync(1);
+                    break;
+                default:
+                    info("Wrong input");
+                    break;
+            }
 
-//        info("### TEST 2 ### UNARY ### BLOCKING ### 1,000 CALLS");
-//        getAllMoviesUnaryBlockingStub(Empty.getDefaultInstance(), 1000);
-//
-//        info("### TEST 3 ### UNARY ### BLOCKING ### 10,000 CALLS");
-//        getAllMoviesUnaryBlockingStub(Empty.getDefaultInstance(), 10000);
-//
-//        info("### TEST 4 ### UNARY ### BLOCKING ### 100,000 CALLS");
-//        getAllMoviesUnaryBlockingStub(Empty.getDefaultInstance(), 100000);
-
-        info("");
-        info("### TEST 5 ### SERVER STREAMING ### BLOCKING ### 1 CALL");
-        getAllMoviesServerStreamingBlockingStub(Empty.getDefaultInstance(), 1);
-
-//        info("### TEST 6 ### SERVER STREAMING ### BLOCKING ### 1,000 CALL");
-//        getAllMoviesServerStreamingBlockingStub(Empty.getDefaultInstance(), 1000);
-//
-//        info("### TEST 7 ### SERVER STREAMING ### BLOCKING ### 10,000 CALL");
-//        getAllMoviesServerStreamingBlockingStub(Empty.getDefaultInstance(), 10000);
-//
-//        info("### TEST 8 ### SERVER STREAMING ### BLOCKING ### 100,000 CALL");
-//        getAllMoviesServerStreamingBlockingStub(Empty.getDefaultInstance(), 100000);
-
-        info("");
-        info("### TEST 9 ### SERVER STREAMING ### ASYNC ### 1 CALL");
-        benchmarkServerStreamingBlocking(1);
-
-//        info("### TEST 10 ### SERVER STREAMING ### ASYNC ### 1,000 CALL");
-//        benchmarkServerStreamingBlocking(1000);
-//
-//        info("### TEST 11 ### SERVER STREAMING ### ASYNC ### 10,000 CALL");
-//        benchmarkServerStreamingBlocking(10000);
-//
-//        info("### TEST 12 ### SERVER STREAMING ### ASYNC ### 100,000 CALL");
-//        benchmarkServerStreamingBlocking(100000);
-
+        }
     }
 
-
     public static void main(String[] args) throws InterruptedException {
-        info("BENCHMART TEST CLIENT: ");
-        List<Movie> movies;
+        int iterations = 10; // default
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Usage: 1 = Unary Blocking, 2 = Streaming Blocking, 3 = Streaming non-blocking");
+        int mode = scanner.nextInt();
 
-        try {
-            movies = MovieServiceUtil.parseMovies(MovieServiceUtil.getDefaultMoviesFile());
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
-        }
+        System.out.println("Press any key to continue ... ");
+        scanner.nextLine();
 
-        int testCase = 0;
-
-        if (args.length > 0) {
-            try {
-                testCase = Integer.parseInt(args[0]);
-            } catch (NumberFormatException e) {
-                e.printStackTrace();
-            }
-        }
+        info("BENCHMARK TEST CLIENT: ");
 
         MovieServiceClient client = new MovieServiceClient("localhost", 8980);
         try {
-            switch (testCase) {
-                default:
-                    client.runAllTests();
-                    break;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+            client.runTests(mode, 1, iterations);
+            client.runTests(mode, 1000, iterations);
+            client.runTests(mode, 10000, iterations);
+            client.runTests(mode, 100000, iterations);
+        } catch (RuntimeException e) {
+            logger.severe("" + e.getMessage() + " - " + e.getStackTrace());
         } finally {
             client.shutdown();
         }
@@ -282,8 +260,7 @@ public class MovieServiceClient {
     }
 
     private static void logTransmissionTime(long value) {
-        info("Transmission time: {0} nanoseconds ===============  {1} milliseconds ", value, value/(double)1000000);
-
+        info("{0}", value, value / (double) 1000000);
     }
 
 

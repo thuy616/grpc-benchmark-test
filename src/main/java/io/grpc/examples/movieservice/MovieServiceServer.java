@@ -1,8 +1,10 @@
 package io.grpc.examples.movieservice;
 
 import com.google.protobuf.Empty;
+import com.sun.javafx.binding.Logging;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 
 import java.io.File;
@@ -13,6 +15,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.logging.FileHandler;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
@@ -46,7 +49,9 @@ public class MovieServiceServer {
         }
 
         fh.setFormatter(new SimpleFormatter());
+        fh.setLevel(Level.INFO);
         logger.addHandler(fh);
+
     }
 
     /** Create a Movie server listening on {@code port} using {@code moviesFile} database. */
@@ -96,9 +101,15 @@ public class MovieServiceServer {
      * Main method.  This comment makes the linter happy.
      */
     public static void main(String[] args) throws Exception {
-        MovieServiceServer server = new MovieServiceServer(8980);
-        server.start();
-        server.blockUntilShutdown();
+        try {
+            MovieServiceServer server = new MovieServiceServer(8980);
+            server.start();
+            server.blockUntilShutdown();
+        } catch (RuntimeException e) {
+            logger.info(String.format("Runtime exception: {0} - {1} ", e.getMessage(), e.getStackTrace()));
+        } catch (Exception e) {
+            logger.info(String.format("Unknown exception: {0} - {1} ", e.getMessage(), e.getStackTrace()));
+        }
     }
 
     private static class MovieServiceImpl extends MovieServiceGrpc.AbstractMovieService {
@@ -110,38 +121,52 @@ public class MovieServiceServer {
 
         @Override
         public void getMovieDetails(MovieRequest request, StreamObserver<Movie> responseObserver) {
-
-            responseObserver.onNext(getMovie(request.getId()));
-            responseObserver.onCompleted();
+            try {
+                responseObserver.onNext(getMovie(request.getId()));
+                responseObserver.onCompleted();
+            }catch(RuntimeException e) {
+                logger.severe(String.format("Runtime exception: {0} - {1} ", e.getMessage(), e.getStackTrace()));
+            }
         }
 
         @Override
-        public void listAllMovies(Empty request, StreamObserver<MoviesInTheaterResponse> responseObserver) {
-            MoviesInTheaterResponse.Builder res = MoviesInTheaterResponse.newBuilder();
-            for (Movie movie: movies) {
-                res.addMovies(movie);
+        public void listAllMovies(Empty request, StreamObserver<MoviesInTheaterResponse> basicResponseObserver) {
+            try {
+                MoviesInTheaterResponse.Builder res = MoviesInTheaterResponse.newBuilder();
+                for (Movie movie : movies) {
+                    res.addMovies(movie);
+                }
+
+                final ServerCallStreamObserver responseObserver = (ServerCallStreamObserver)basicResponseObserver;
+                responseObserver.setOnReadyHandler(new Runnable() {
+                    @Override
+                    public void run() {
+                        while(responseObserver.isReady()) {
+                            responseObserver.onNext(res.build());
+                            responseObserver.onCompleted();
+                        }
+                    }
+                });
+            }catch(RuntimeException e) {
+                logger.info(String.format("####### Runtime exception: {0} - {1} ", e.getMessage(), e.getStackTrace()));
             }
-            responseObserver.onNext(res.build());
-            responseObserver.onCompleted();
         }
 
         @Override
-        public void listAllMoviesServerStreaming(Empty request, StreamObserver<Movie> responseObserver) {
-            for (Movie movie: movies) {
-                responseObserver.onNext(movie);
-            }
-            responseObserver.onCompleted();
-        }
+        public void listAllMoviesServerStreaming(Empty request, StreamObserver<Movie> basicResponseObserver) {
+            final ServerCallStreamObserver responseObserver = (ServerCallStreamObserver)basicResponseObserver;
+            responseObserver.setOnReadyHandler(new Runnable() {
+                @Override
+                public void run() {
+                    while(responseObserver.isReady()) {
+                        for (Movie movie: movies) {
+                            responseObserver.onNext(movie);
+                        }
+                        responseObserver.onCompleted();
+                    }
+                }
+            });
 
-        @Override
-        public void listMoviesServerToClientStreaming(MoviesInTheaterRequest request, StreamObserver<Movie> responseObserver) {
-            Movie movie;
-            for (long id: request.getIdsList()) {
-                movie = getMovie(id);
-                responseObserver.onNext(movie);
-
-            }
-            responseObserver.onCompleted();
         }
 
         private Movie getMovie(long id) {

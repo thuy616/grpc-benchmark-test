@@ -13,11 +13,13 @@ import java.io.Reader;
 import java.net.URL;
 import java.util.List;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Created by thuy on 18/05/16.
  */
 public class MovieServiceUtil {
+    private static final Logger logger = Logger.getLogger(MovieServiceServer.class.getName());
 
     public static URL getDefaultMoviesFile() {
         return MovieServiceServer.class.getResource("movie_service_db.json");

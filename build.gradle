@@ -18,6 +18,9 @@ repositories {
 
 dependencies {
     compile 'io.grpc:grpc-all:0.14.0'
+    compile 'ch.qos.logback:logback-classic:1.1.3'
+    compile 'org.slf4j:slf4j-api:1.7.10'
+    runtime 'org.slf4j:slf4j-simple:1.7.10'
 }
 
 mainClassName = "io.grpc.examples.movieservice"
@@ -57,19 +60,6 @@ task copyJarToBin(type: Copy) {
     into "build/tmp"
 }
 
-//
-//task clientJar(type: Jar) {
-//    dependsOn compileJava
-//    classifier = "client"
-//    archiveName = "client"
-//    destinationDir = new File(project.buildDir, 'tmp')
-//    from (sourceSets.main.output) {
-//        exclude 'src/main/java/agent/**'
-//    }
-//    manifest {
-//        attributes("Premain-Class": "ObjectSizeAgent")
-//    }
-//}
 
 task movieServiceServer(type: CreateStartScripts) {
     mainClassName = "io.grpc.examples.movieservice.MovieServiceServer"
@@ -83,7 +73,13 @@ task movieServiceClient(type: CreateStartScripts) {
     applicationName = "movie-service-client"
     outputDir = new File(project.buildDir, 'tmp')
     classpath = jar.outputs.files + project.configurations.runtime
-//    defaultJvmOpts = ['-javaagent:io.grpc.examples-agent.jar']
+}
+
+task serializerTest(type: CreateStartScripts) {
+    mainClassName = "io.grpc.examples.movieservice.SerializerTest"
+    applicationName = "serializer-test"
+    outputDir = new File(project.buildDir, 'tmp')
+    classpath = jar.outputs.files + project.configurations.runtime
 }
 
 artifacts {
@@ -93,7 +89,7 @@ artifacts {
 applicationDistribution.into("bin") {
     from(movieServiceServer)
     from(movieServiceClient)
-    from(agentJar)
+    from(serializerTest)
     fileMode = 0755
 }
 
