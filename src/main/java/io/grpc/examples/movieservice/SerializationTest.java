@@ -1,9 +1,6 @@
 package io.grpc.examples.movieservice;
 
-import com.google.protobuf.Empty;
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,8 +8,6 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.List;
-import java.util.Scanner;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -91,21 +86,16 @@ public class SerializationTest {
             }
         }
 
-        info("Total serialization time: {0}", totalSerializationTime);
-        info("Average serialization time: {0}", totalSerializationTime/(float)n);
+//        info("Total serialization time: {0}", totalSerializationTime);
+        info("Average serialization time: \n {0}", totalSerializationTime/(float)n);
 
-        info("Total de-serialization time: {0}", totalDeserializationTime);
-        info("Average de-serialization time: {0}", totalDeserializationTime/(float)n);
+//        info("Total de-serialization time: {0}", totalDeserializationTime);
+        info("Average de-serialization time: \n {0}", totalDeserializationTime/(float)n);
 
     }
 
     public static void main(String[] args) throws InterruptedException {
-        int iterations = 3; // default
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Number of Iterations: ");
-        iterations = scanner.nextInt();
-        System.out.println("Press any key to conitnue ... ");
-        scanner.nextLine();
+        int iterations = 10; // default
         info("GRPC SERIALIZATION TESTS: ");
 
         try {
