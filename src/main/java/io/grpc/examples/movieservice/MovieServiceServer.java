@@ -6,6 +6,8 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,16 +17,15 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.logging.FileHandler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+
 
 /**
  * Created by thuy on 18/05/16.
  */
 public class MovieServiceServer {
 
-    private static final Logger logger = Logger.getLogger(MovieServiceServer.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(MovieServiceServer.class.getName());
 
     private final int port;
     private final Server server;
@@ -32,25 +33,6 @@ public class MovieServiceServer {
 
     public MovieServiceServer(int port) throws IOException {
         this(port, MovieServiceUtil.getDefaultMoviesFile());
-
-        SimpleDateFormat format = new SimpleDateFormat("MM_dd_yyyy_HHmmss");
-        try {
-            String dir = Paths.get("").toAbsolutePath().toString() + "//Logging";
-            File directory = new File(dir);
-
-            if (!directory.exists()) {
-                directory.mkdir();
-            }
-
-            fh = new FileHandler(dir + "//Server_Log_"
-                    + format.format(Calendar.getInstance().getTime()) + ".log");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        fh.setFormatter(new SimpleFormatter());
-        fh.setLevel(Level.INFO);
-        logger.addHandler(fh);
 
     }
 
@@ -106,9 +88,9 @@ public class MovieServiceServer {
             server.start();
             server.blockUntilShutdown();
         } catch (RuntimeException e) {
-            logger.info(String.format("Runtime exception: {0} - {1} ", e.getMessage(), e.getStackTrace()));
+            logger.info(String.format("Runtime exception: {0} ", e.getMessage()));
         } catch (Exception e) {
-            logger.info(String.format("Unknown exception: {0} - {1} ", e.getMessage(), e.getStackTrace()));
+            logger.info(String.format("Unknown exception: {0} ", e.getMessage()));
         }
     }
 
@@ -125,7 +107,7 @@ public class MovieServiceServer {
                 responseObserver.onNext(getMovie(request.getId()));
                 responseObserver.onCompleted();
             }catch(RuntimeException e) {
-                logger.severe(String.format("Runtime exception: {0} - {1} ", e.getMessage(), e.getStackTrace()));
+                logger.error(String.format("Runtime exception: {0} ", e.getMessage()));
             }
         }
 
@@ -148,7 +130,7 @@ public class MovieServiceServer {
                     }
                 });
             }catch(RuntimeException e) {
-                logger.info(String.format("####### Runtime exception: {0} - {1} ", e.getMessage(), e.getStackTrace()));
+                logger.info(String.format("####### Runtime exception: {0} ", e.getMessage()));
             }
         }
 

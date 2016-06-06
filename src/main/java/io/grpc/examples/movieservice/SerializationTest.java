@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Scanner;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -81,7 +82,6 @@ public class SerializationTest {
             } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();
                 logger.log(Level.SEVERE, "Exception while deserializing data: ", e);
-                info("Strack trace: {0}", e.getStackTrace());
                 return;
             }
         }
@@ -97,13 +97,18 @@ public class SerializationTest {
     public static void main(String[] args) throws InterruptedException {
         int iterations = 10; // default
         info("GRPC SERIALIZATION TESTS: ");
-
+        Scanner scanner = new Scanner(System.in);
+        // to prevent the client from starting immediately
+        // so that there is time to find pid of the process and
+        // start recording Instruments for Activity Monitor and Memory Leaks
+        System.out.println("Press any key to continue...");
+        scanner.nextLine();
         try {
             SerializationTest testClient = new SerializationTest();
 
             for (int i=0; i<iterations; i++) {
                 info("***********************    ITERATION {0}    ***********************", i);
-                testClient.testSerialization(100000);
+                testClient.testSerialization(10000);
             }
         } catch (RuntimeException e) {
             logger.log(Level.SEVERE, "Runtime exception: {0}", e);
