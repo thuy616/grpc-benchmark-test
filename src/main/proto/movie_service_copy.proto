@@ -8,12 +8,8 @@ option objc_class_prefix = "MS";
 
 package movieservice;
 
-// The greeting service definition.
 service MovieService {
-    // Simple Unary RPC
-    // Get details for a movie
-    rpc GetMovieDetails (MovieRequest) returns (Movie) {}
-
+    
     // Simple Unary RPC
     // Get a list of movies
     // big result
