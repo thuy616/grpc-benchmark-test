@@ -15,10 +15,11 @@ service MovieService {
     // big result
     rpc ListAllMovies(google.protobuf.Empty) returns (MoviesInTheaterResponse) {}
 
-    // A client-to-server Streaming RPC
-    // returns all results at once when the requests are all received
-    rpc ListMoviesClientToServerStreaming(stream MovieRequest) returns (MoviesInTheaterResponse) {}
-
+    // A server-to-client Streaming RPC
+    // accepts a request
+    // Obtains the list of movies
+    // Results are streamed rather than returned at once
+    rpc ListAllMoviesServerStreaming(google.protobuf.Empty) returns (stream Movie) {}
 }
 
 message MoviesInTheaterRequest {
